@@ -60,6 +60,8 @@ provide('navigation', navigation)
       <NuxtPage />
     </NuxtLayout>
 
+    <UToaster />
+
     <ClientOnly>
       <LazyUContentSearch
         :files="files"

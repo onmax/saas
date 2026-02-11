@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import * as z from 'zod'
 import type { FormSubmitEvent } from '@nuxt/ui'
+import { getSafeRedirect } from '../utils/safe-redirect'
 
 definePageMeta({
-  layout: 'auth'
+  layout: 'auth',
+  auth: 'guest'
 })
 
 useSeoMeta({
@@ -11,6 +13,8 @@ useSeoMeta({
   description: 'Login to your account to continue'
 })
 
+const route = useRoute()
+const { signIn } = useUserSession()
 const toast = useToast()
 
 const fields = [{
@@ -31,28 +35,43 @@ const fields = [{
 }]
 
 const providers = [{
-  label: 'Google',
-  icon: 'i-simple-icons-google',
-  onClick: () => {
-    toast.add({ title: 'Google', description: 'Login with Google' })
-  }
-}, {
   label: 'GitHub',
   icon: 'i-simple-icons-github',
-  onClick: () => {
-    toast.add({ title: 'GitHub', description: 'Login with GitHub' })
+  onClick: async () => {
+    try {
+      await signIn.social({ provider: 'github', callbackURL: getSafeRedirect(route.query.redirect, '/app') })
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'GitHub sign in failed'
+      toast.add({ title: 'Error', description: message, color: 'error' })
+    }
   }
 }]
 
 const schema = z.object({
   email: z.email('Invalid email'),
-  password: z.string().min(8, 'Must be at least 8 characters')
+  password: z.string().min(8, 'Must be at least 8 characters'),
+  remember: z.boolean().optional()
 })
 
 type Schema = z.output<typeof schema>
 
-function onSubmit(payload: FormSubmitEvent<Schema>) {
-  console.log('Submitted', payload)
+async function onSubmit(payload: FormSubmitEvent<Schema>) {
+  await signIn.email(
+    {
+      email: payload.data.email,
+      password: payload.data.password,
+      rememberMe: Boolean(payload.data.remember)
+    },
+    {
+      onSuccess: () => {
+        toast.add({ title: 'Success', description: 'Logged in successfully', color: 'success' })
+        navigateTo(getSafeRedirect(route.query.redirect, '/app'))
+      },
+      onError: (ctx) => {
+        toast.add({ title: 'Error', description: ctx.error.message || 'Login failed', color: 'error' })
+      }
+    }
+  )
 }
 </script>
 
@@ -74,7 +93,7 @@ function onSubmit(payload: FormSubmitEvent<Schema>) {
 
     <template #password-hint>
       <ULink
-        to="/"
+        to="/forget-password"
         class="text-primary font-medium"
         tabindex="-1"
       >Forgot password?</ULink>

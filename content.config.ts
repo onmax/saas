@@ -81,6 +81,7 @@ export const collections = {
     schema: z.object({
       plans: z.array(
         z.object({
+          key: z.enum(['basic', 'standard', 'premium']),
           title: z.string().nonempty(),
           description: z.string().nonempty(),
           price: z.object({

@@ -3,8 +3,11 @@
 .data
 .nuxt
 .nitro
+.nuxtrc
 .cache
 dist
+.wrangler
+wrangler.toml
 
 # Node dependencies
 node_modules

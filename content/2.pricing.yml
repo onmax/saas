@@ -5,7 +5,8 @@ seo:
   description: Choose the plan that's right for you.
 navigation.icon: i-lucide-credit-card
 plans:
-  - title: Basic
+  - key: basic
+    title: Basic
     description: A basic plan for individuals.
     price:
       month: $9.9
@@ -22,7 +23,8 @@ plans:
       - 1 Database
       - 1 SSL Certificate
       - 1 Support Ticket
-  - title: Standard
+  - key: standard
+    title: Standard
     description: A standard plan for small teams.
     price:
       month: $19.9
@@ -39,7 +41,8 @@ plans:
       - 10 Databases
       - 10 SSL Certificates
       - 10 Support Tickets
-  - title: Premium
+  - key: premium
+    title: Premium
     description: A premium plan for large teams.
     price:
       month: $29.9
