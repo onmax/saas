@@ -10,16 +10,19 @@ interface UsePricingBillingStateOptions {
   productSlug: string
 }
 
-async function useSubscriptionState() {
+function useSubscriptionState(loggedIn: { value: boolean }) {
   const {
     data: customerState,
     error: subscriptionError,
-    pending: subscriptionPending
-  } = await useAuthAsyncData<CustomerState>(
-    'pricing-customer-state',
-    requestFetch => requestFetch('/api/auth/customer/state')
-  )
+    status
+  } = useFetch<CustomerState | null>('/api/auth/customer/state', {
+    key: 'pricing-customer-state',
+    server: false,
+    immediate: loggedIn.value,
+    default: () => null
+  })
 
+  const subscriptionPending = computed(() => loggedIn.value && (status.value === 'idle' || status.value === 'pending'))
   const isSubscribed = computed(() => (customerState.value?.activeSubscriptions?.length || 0) > 0)
   const canUpgrade = computed(() => !subscriptionPending.value && !subscriptionError.value && !isSubscribed.value)
 
@@ -31,7 +34,7 @@ async function useSubscriptionState() {
   }
 }
 
-async function usePricingBillingState({ loggedIn, productSlug }: UsePricingBillingStateOptions) {
+function usePricingBillingState({ loggedIn, productSlug }: UsePricingBillingStateOptions) {
   const toast = useToast()
   const checkout = useAuthClientAction(client => client.checkout)
   const portal = useAuthClientAction(client => client.customer.portal)
@@ -40,7 +43,7 @@ async function usePricingBillingState({ loggedIn, productSlug }: UsePricingBilli
     isSubscribed,
     subscriptionError,
     subscriptionPending
-  } = await useSubscriptionState()
+  } = useSubscriptionState(loggedIn)
 
   async function onManageSubscription() {
     await portal.execute()
@@ -95,7 +98,7 @@ const {
   onPaidPlanAction,
   subscriptionError,
   subscriptionPending
-} = await usePricingBillingState({ loggedIn, productSlug })
+} = usePricingBillingState({ loggedIn, productSlug })
 
 const title = page.value?.seo?.title || page.value?.title
 const description = page.value?.seo?.description || page.value?.description
