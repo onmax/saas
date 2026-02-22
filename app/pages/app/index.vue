@@ -1,22 +1,39 @@
 <script setup lang="ts">
 useSeoMeta({ title: 'Dashboard' })
 
+interface CustomerState {
+  activeSubscriptions?: unknown[]
+}
+
 interface UseBillingStateOptions {
-  loggedIn: { value: boolean }
   productSlug: string
 }
 
-function useBillingState({ loggedIn, productSlug }: UseBillingStateOptions) {
+async function useSubscriptionState() {
+  const {
+    data: customerState,
+    error: subscriptionError,
+    pending: subscriptionPending
+  } = await useAuthAsyncData<CustomerState>(
+    'dashboard-customer-state',
+    requestFetch => requestFetch('/api/auth/customer/state')
+  )
+
+  const isSubscribed = computed(() => (customerState.value?.activeSubscriptions?.length || 0) > 0)
+  const canShowUpgrade = computed(() => !subscriptionPending.value && !subscriptionError.value && !isSubscribed.value)
+
+  return {
+    canShowUpgrade,
+    isSubscribed,
+    subscriptionPending
+  }
+}
+
+async function useBillingState({ productSlug }: UseBillingStateOptions) {
   const toast = useToast()
   const checkout = useAuthClientAction(client => client.checkout)
   const portal = useAuthClientAction(client => client.customer.portal)
-  const { data: customerState, error } = useFetch('/api/auth/customer/state', {
-    key: 'dashboard-customer-state',
-    immediate: loggedIn.value,
-    default: () => null
-  })
-
-  const isSubscribed = computed(() => !error.value && (((customerState.value as { activeSubscriptions?: unknown[] } | null)?.activeSubscriptions?.length || 0) > 0))
+  const { canShowUpgrade, isSubscribed, subscriptionPending } = await useSubscriptionState()
 
   async function onManageSubscription() {
     await portal.execute()
@@ -31,7 +48,7 @@ function useBillingState({ loggedIn, productSlug }: UseBillingStateOptions) {
   }
 
   async function onUpgradeToPro() {
-    if (isSubscribed.value) {
+    if (!canShowUpgrade.value) {
       await onManageSubscription()
       return
     }
@@ -48,16 +65,24 @@ function useBillingState({ loggedIn, productSlug }: UseBillingStateOptions) {
   }
 
   return {
+    canShowUpgrade,
     isSubscribed,
     onUpgradeToPro,
-    onManageSubscription
+    onManageSubscription,
+    subscriptionPending
   }
 }
 
 const route = useRoute()
 const { productSlug } = useRuntimeConfig().public.polar
-const { user, loggedIn, signOut } = useUserSession()
-const { isSubscribed, onUpgradeToPro, onManageSubscription } = useBillingState({ loggedIn, productSlug })
+const { user, signOut } = useUserSession()
+const {
+  canShowUpgrade,
+  isSubscribed,
+  onUpgradeToPro,
+  onManageSubscription,
+  subscriptionPending
+} = await useBillingState({ productSlug })
 
 const dashboardItems = computed(() => [[{
   label: 'Overview',
@@ -105,22 +130,29 @@ const dashboardItems = computed(() => [[{
           <BetterAuthState>
             <template #default>
               <div class="space-y-2">
-                <UButton
-                  v-if="!isSubscribed"
-                  label="Upgrade to Pro"
-                  icon="i-lucide-sparkles"
-                  color="primary"
-                  block
-                  @click="onUpgradeToPro"
-                />
-                <UButton
-                  :label="isSubscribed ? 'Manage subscription' : 'Billing portal'"
-                  icon="i-lucide-receipt-text"
-                  color="neutral"
-                  variant="soft"
-                  block
-                  @click="onManageSubscription"
-                />
+                <template v-if="subscriptionPending">
+                  <div class="h-10 rounded-md bg-elevated animate-pulse" />
+                  <div class="h-10 rounded-md bg-elevated animate-pulse" />
+                </template>
+
+                <template v-else>
+                  <UButton
+                    v-if="canShowUpgrade"
+                    label="Upgrade to Pro"
+                    icon="i-lucide-sparkles"
+                    color="primary"
+                    block
+                    @click="onUpgradeToPro"
+                  />
+                  <UButton
+                    :label="isSubscribed ? 'Manage subscription' : 'Billing portal'"
+                    icon="i-lucide-receipt-text"
+                    color="neutral"
+                    variant="soft"
+                    block
+                    @click="onManageSubscription"
+                  />
+                </template>
               </div>
             </template>
 

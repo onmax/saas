@@ -1,22 +1,46 @@
 <script setup lang="ts">
 import type { PricingPlanProps } from '#ui/types'
 
+interface CustomerState {
+  activeSubscriptions?: unknown[]
+}
+
 interface UsePricingBillingStateOptions {
   loggedIn: { value: boolean }
   productSlug: string
 }
 
-function usePricingBillingState({ loggedIn, productSlug }: UsePricingBillingStateOptions) {
+async function useSubscriptionState() {
+  const {
+    data: customerState,
+    error: subscriptionError,
+    pending: subscriptionPending
+  } = await useAuthAsyncData<CustomerState>(
+    'pricing-customer-state',
+    requestFetch => requestFetch('/api/auth/customer/state')
+  )
+
+  const isSubscribed = computed(() => (customerState.value?.activeSubscriptions?.length || 0) > 0)
+  const canUpgrade = computed(() => !subscriptionPending.value && !subscriptionError.value && !isSubscribed.value)
+
+  return {
+    canUpgrade,
+    isSubscribed,
+    subscriptionError,
+    subscriptionPending
+  }
+}
+
+async function usePricingBillingState({ loggedIn, productSlug }: UsePricingBillingStateOptions) {
   const toast = useToast()
   const checkout = useAuthClientAction(client => client.checkout)
   const portal = useAuthClientAction(client => client.customer.portal)
-  const { data: customerState, error } = useFetch<{ activeSubscriptions?: unknown[] } | null>('/api/auth/customer/state', {
-    key: 'pricing-customer-state',
-    immediate: loggedIn.value,
-    default: () => null
-  })
-
-  const isSubscribed = computed(() => !error.value && (customerState.value?.activeSubscriptions?.length || 0) > 0)
+  const {
+    canUpgrade,
+    isSubscribed,
+    subscriptionError,
+    subscriptionPending
+  } = await useSubscriptionState()
 
   async function onManageSubscription() {
     await portal.execute()
@@ -39,7 +63,7 @@ function usePricingBillingState({ loggedIn, productSlug }: UsePricingBillingStat
       return
     }
 
-    if (isSubscribed.value) {
+    if (!canUpgrade.value) {
       await onManageSubscription()
       return
     }
@@ -57,14 +81,21 @@ function usePricingBillingState({ loggedIn, productSlug }: UsePricingBillingStat
 
   return {
     isSubscribed,
-    onPaidPlanAction
+    onPaidPlanAction,
+    subscriptionError,
+    subscriptionPending
   }
 }
 
 const { data: page } = await useAsyncData('pricing', () => queryCollection('pricing').first())
 const { productSlug } = useRuntimeConfig().public.polar
 const { loggedIn } = useUserSession()
-const { isSubscribed, onPaidPlanAction } = usePricingBillingState({ loggedIn, productSlug })
+const {
+  isSubscribed,
+  onPaidPlanAction,
+  subscriptionError,
+  subscriptionPending
+} = await usePricingBillingState({ loggedIn, productSlug })
 
 const title = page.value?.seo?.title || page.value?.title
 const description = page.value?.seo?.description || page.value?.description
@@ -122,7 +153,10 @@ const plans = computed<PricingPlanProps[]>(() => {
     price: proPlan.price?.month || '$19.9',
     button: {
       ...(proPlan.button || {}),
-      label: isSubscribed.value ? 'Manage subscription' : 'Upgrade to Pro',
+      label: subscriptionPending.value
+        ? 'Checking subscription...'
+        : (isSubscribed.value || subscriptionError.value ? 'Manage subscription' : 'Upgrade to Pro'),
+      disabled: subscriptionPending.value,
       onClick: () => onPaidPlanAction()
     },
     features: proPlan.features || [],
