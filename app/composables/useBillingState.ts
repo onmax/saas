@@ -21,10 +21,10 @@ export function useBillingState({
   const checkout = useAuthClientAction(client => client.checkout)
   const portal = useAuthClientAction(client => client.customer.portal)
 
-  const { data: customerState, error, status, refresh } = useFetch('/api/auth/customer/state', {
+  const { data: customerState, error, status, refresh } = useCustomerStateAction({
+    loggedIn,
     key: customerStateKey,
-    immediate: toValue(loggedIn),
-    default: () => null
+    immediate: true
   })
 
   const isSubscribed = computed(() => {
