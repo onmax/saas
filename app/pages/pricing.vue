@@ -4,14 +4,13 @@ import type { PricingPlanProps } from '#ui/types'
 const { data: page } = await useAsyncData('pricing', () => queryCollection('pricing').first())
 const { productSlug } = useRuntimeConfig().public.polar
 const { loggedIn } = useUserSession()
-const { isSubscribed, status, onPaidPlanAction } = useBillingState({
+const { isSubscribed, isSubscriptionResolving, onPaidPlanAction } = useBillingState({
   loggedIn,
   productSlug,
   customerStateKey: 'pricing-customer-state',
   requireLoginForCheckout: true,
   loginRedirect: '/pricing'
 })
-const isSubscriptionResolving = computed(() => loggedIn.value && (status.value === 'idle' || status.value === 'pending'))
 
 const title = page.value?.seo?.title || page.value?.title
 const description = page.value?.seo?.description || page.value?.description

@@ -4,12 +4,11 @@ useSeoMeta({ title: 'Dashboard' })
 const route = useRoute()
 const { productSlug } = useRuntimeConfig().public.polar
 const { user, loggedIn, signOut } = useUserSession()
-const { isSubscribed, status, onUpgradeToPro, onManageSubscription } = useBillingState({
+const { isSubscribed, isSubscriptionResolving, onUpgradeToPro, onManageSubscription } = useBillingState({
   loggedIn,
   productSlug,
   customerStateKey: 'dashboard-customer-state'
 })
-const isSubscriptionResolving = computed(() => loggedIn.value && (status.value === 'idle' || status.value === 'pending'))
 
 const dashboardItems = computed(() => [[{
   label: 'Overview',

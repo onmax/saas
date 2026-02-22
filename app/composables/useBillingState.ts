@@ -42,6 +42,7 @@ export function useBillingState({
 
     return Array.isArray(subscriptions) && subscriptions.length > 0
   })
+  const isSubscriptionResolving = computed(() => toValue(loggedIn) && (status.value === 'idle' || status.value === 'pending'))
 
   async function onManageSubscription() {
     await portal.execute()
@@ -88,6 +89,7 @@ export function useBillingState({
     customerState,
     error,
     isSubscribed,
+    isSubscriptionResolving,
     status,
     onPaidPlanAction,
     onManageSubscription,
