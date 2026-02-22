@@ -18,7 +18,10 @@ function toFreePlan(): TodoPlanLimits {
 
 export async function resolveTodoPlan(event: H3Event): Promise<TodoPlanLimits> {
   try {
-    const customerState = await fetchWithEvent(event, '/api/auth/customer/state')
+    const cookieHeader = getHeader(event, 'cookie')
+    const customerState = await fetchWithEvent(event, '/api/auth/customer/state', {
+      headers: cookieHeader ? { cookie: cookieHeader } : undefined
+    })
 
     const activeSubscriptions = customerState && typeof customerState === 'object' && 'activeSubscriptions' in customerState
       ? (customerState as { activeSubscriptions?: unknown }).activeSubscriptions
@@ -30,7 +33,8 @@ export async function resolveTodoPlan(event: H3Event): Promise<TodoPlanLimits> {
         maxItems: null
       }
     }
-  } catch {
+  } catch (error) {
+    console.warn('[todos] Failed to resolve customer plan, defaulting to free', error)
     return toFreePlan()
   }
 

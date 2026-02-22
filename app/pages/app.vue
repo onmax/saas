@@ -16,6 +16,7 @@ const {
   canCreate: canCreateTodo,
   status: todoStatus,
   isMutating: isTodoMutating,
+  refresh: refreshTodos,
   createTodo,
   toggleTodo,
   deleteTodo
@@ -28,6 +29,16 @@ const isFreeTodoPlan = computed(() => todoLimits.value.plan === 'free')
 const isTodoLimitReached = computed(() => isFreeTodoPlan.value && !canCreateTodo.value)
 const pendingTodoCount = computed(() => todoItems.value.filter(todo => !todo.completed).length)
 const todoCountLabel = computed(() => `${pendingTodoCount.value} pending task${pendingTodoCount.value === 1 ? '' : 's'}`)
+
+watch(
+  () => [isSubscribed.value, todoLimits.value.plan] as const,
+  async ([subscribed, todoPlan]) => {
+    if (subscribed && todoPlan === 'free') {
+      await refreshTodos()
+    }
+  },
+  { immediate: true }
+)
 
 const dashboardItems = computed(() => [[{
   label: 'Overview',
