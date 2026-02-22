@@ -60,6 +60,8 @@ NUXT_POLAR_RETURN_URL=<app-base-url>
 NUXT_PUBLIC_POLAR_PRODUCT_SLUG=pro
 ```
 
+Default webhook path: `/api/auth/polar/webhooks`. Configure the full endpoint in Polar as `<app-base-url>/api/auth/polar/webhooks`.
+
 ## Development Server
 
 Start the development server on `http://localhost:3000`:
