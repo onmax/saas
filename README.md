@@ -62,6 +62,13 @@ NUXT_PUBLIC_POLAR_PRODUCT_SLUG=pro
 
 Default webhook path: `/api/auth/polar/webhooks`. Configure the full endpoint in Polar as `<app-base-url>/api/auth/polar/webhooks`.
 
+### Todo Limits By Plan
+
+The dashboard includes a minimal per-user todo list example that shows auth + billing tier logic end to end:
+
+- Free users can keep up to 3 todo items.
+- Pro users (active Polar subscription) can create unlimited todo items.
+
 ## Development Server
 
 Start the development server on `http://localhost:3000`:
