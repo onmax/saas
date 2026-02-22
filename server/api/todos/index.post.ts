@@ -31,33 +31,43 @@ export default defineEventHandler(async (event) => {
   const payload = parseCreateTodoBody(await readBody(event))
   const limits = await resolveTodoPlan(event)
 
-  if (limits.plan === 'free') {
-    const [{ value: totalItems }] = await db
-      .select({ value: count() })
-      .from(schema.todoItem)
-      .where(eq(schema.todoItem.userId, user.id))
-
-    if (totalItems >= FREE_TODO_LIMIT) {
-      throw createError({
-        statusCode: 403,
-        statusMessage: 'Free todo limit reached',
-        data: {
-          code: 'FREE_TODO_LIMIT_REACHED',
-          maxItems: FREE_TODO_LIMIT
-        }
-      })
-    }
+  const values = {
+    id: crypto.randomUUID(),
+    userId: user.id,
+    title: payload.title,
+    completed: false
   }
 
-  const [todo] = await db
-    .insert(schema.todoItem)
-    .values({
-      id: crypto.randomUUID(),
-      userId: user.id,
-      title: payload.title,
-      completed: false
-    })
-    .returning()
+  const todo = limits.plan === 'free'
+    ? await db.transaction(async (tx: typeof db) => {
+        // Acquire the write lock before checking count so free-tier quota is enforced atomically.
+        const [{ value: totalItems }] = await tx
+          .select({ value: count() })
+          .from(schema.todoItem)
+          .where(eq(schema.todoItem.userId, user.id))
+
+        if (totalItems >= FREE_TODO_LIMIT) {
+          throw createError({
+            statusCode: 403,
+            statusMessage: 'Free todo limit reached',
+            data: {
+              code: 'FREE_TODO_LIMIT_REACHED',
+              maxItems: FREE_TODO_LIMIT
+            }
+          })
+        }
+
+        const [createdTodo] = await tx
+          .insert(schema.todoItem)
+          .values(values)
+          .returning()
+
+        return createdTodo
+      }, { behavior: 'immediate' })
+    : (await db
+        .insert(schema.todoItem)
+        .values(values)
+        .returning())[0]
 
   return {
     item: toTodoItemResponse(todo)
